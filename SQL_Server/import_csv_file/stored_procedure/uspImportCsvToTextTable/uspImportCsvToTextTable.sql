@@ -30,7 +30,7 @@ BEGIN
 	SET NOCOUNT ON;
 
 	/* Drop the table if it already exists. */
-    DECLARE @SqlDropTable varchar(MAX) = 'DROP TABLE IF EXISTS ' + @TableSchemaName + '.' + @TableName + ';';
+    DECLARE @SqlDropTable varchar(MAX) = 'DROP TABLE IF EXISTS ' + QUOTENAME(@TableSchemaName) + '.' + QUOTENAME(@TableName) + ';';
 	EXEC [sys].[sp_sqlexec] @SqlDropTable;
 
 
@@ -41,21 +41,22 @@ BEGIN
     */
 	DECLARE @Counter int = 1;
     DECLARE @Columns varchar(MAX) = '';
-	BEGIN
+	
+    BEGIN
 		WHILE @Counter <= @NumberOfColumns
 			IF @Counter = 1
 				BEGIN
-					SET @Columns = 'Column' + CAST(@Counter AS varchar(MAX)) + ' varchar(8000)'
+					SET @Columns = QUOTENAME('Column' + CAST(@Counter AS varchar(MAX))) + ' varchar(8000)'
 					SET @Counter = @Counter + 1
 				END
 			ELSE
 			BEGIN
-				SET @Columns = @Columns + ', Column' + CAST(@Counter AS varchar(MAX)) + ' varchar(8000)'
+				SET @Columns = @Columns + ', ' + QUOTENAME('Column' + CAST(@Counter AS varchar(MAX))) + ' varchar(8000)'
 				SET @Counter = @Counter + 1
 			END
-	END
+	END;
 
-	DECLARE @SqlCreateTable varchar(MAX) = 'CREATE TABLE ' + @TableSchemaName + '.' + @TableName + ' (' + @Columns + ' )';
+	DECLARE @SqlCreateTable varchar(MAX) = 'CREATE TABLE ' + QUOTENAME(@TableSchemaName) + '.' + QUOTENAME(@TableName) + ' (' + @Columns + ' )';
 	EXEC [sys].[sp_sqlexec] @SqlCreateTable;
 
 	/* 
@@ -69,8 +70,8 @@ BEGIN
         If this also fails, the error message will be displayed again. 
     */
     
-	DECLARE @SqlBulkInsert varchar(MAX) = '
 	BEGIN TRY
+        DECLARE @SqlBulkInsertCRLF varchar(MAX) = '
         BULK INSERT ' + @TableSchemaName + '.' + @TableName + '
         FROM ''' + @FilePath + '''
         WITH (
@@ -78,13 +79,16 @@ BEGIN
             ROWTERMINATOR = ' + '''0x0d0a''' + ',   
             FIRSTROW = 2,               
             TABLOCK,                    
-            CODEPAGE = ' + '''65001''' + '
-        );
-        PRINT ' + '''Bulk insert using CRLF line break was successfull.''' + '
-    END TRY
+            CODEPAGE = ' + '''65001''' + ' );';
 
+        EXEC [sys].[sp_sqlexec] @SqlBulkInsertCRLF;
+        
+        PRINT 'Bulk insert using CRLF line break was successfull.';
+    END TRY
+        
     BEGIN CATCH
         BEGIN TRY
+            DECLARE @SqlBulkInsertLF varchar(MAX) = '
             BULK INSERT ' + @TableSchemaName + '.' + @TableName + '
             FROM ''' + @FilePath + '''
             WITH (
@@ -92,23 +96,38 @@ BEGIN
                 ROWTERMINATOR = ' + '''0x0a''' + ',
                 FIRSTROW = 2,
                 TABLOCK,
-                CODEPAGE = ' + '''65001''' + '
-            );
-            PRINT ' + '''Bulk insert using LF line break was successfull.''' + '
+                CODEPAGE = ' + '''65001''' + ');'
+
+            EXEC [sys].[sp_sqlexec] @SqlBulkInsertLF;
+
+            PRINT 'Bulk insert using LF line break was successfull.'
         END TRY 
 
         BEGIN CATCH
-            PRINT ' + '''Bulk insert using both CRLF and LF line breaks was unsuccessful. Error message:''' + '
-            PRINT ERROR_MESSAGE()
+            PRINT 'Bulk insert using both CRLF and LF line breaks was unsuccessful. Error message:';
+            PRINT ERROR_MESSAGE();
         END CATCH
     END CATCH
 
-    DECLARE @RowsImported int = (SELECT COUNT(*) FROM ' + @TableSchemaName + '.' + @TableName + ')' + '
-    
+    DECLARE @RowsImported int;
+    DECLARE @QueryRowsImported nvarchar(MAX);
+
+    SET @QueryRowsImported = '
+		SELECT
+			@RowsImported = COUNT(*)
+		FROM ' + QUOTENAME(@TableSchemaName) + '.' + QUOTENAME(@TableName) + ';';
+
+    EXEC [sys].[sp_executesql]
+	    @QueryRowsImported,
+	    N'@RowsImported INT OUTPUT',
+	    @RowsImported = @RowsImported OUTPUT;
+
     IF @RowsImported = 0
         BEGIN
             BEGIN TRY
-                PRINT ' + '''Bulk insert using the CRLF line break succeeded, but imported 0 rows.''' + '
+                PRINT 'Bulk insert using the CRLF line break succeeded, but imported 0 rows.';
+                
+                DECLARE @SqlAgainBulkInsertLF varchar(MAX) = '
                 BULK INSERT ' + @TableSchemaName + '.' + @TableName + '
                 FROM ''' + @FilePath + '''
                 WITH (
@@ -116,17 +135,18 @@ BEGIN
                     ROWTERMINATOR = ' + '''0x0a''' + ',
                     FIRSTROW = 2,
                     TABLOCK,
-                    CODEPAGE = ' + '''65001''' + '
-                );
-                PRINT ' + '''Tried bulk insert using LF line break.''' + '
-                PRINT ' + '''Bulk insert using LF line break was successfull.''' + '
+                    CODEPAGE = ' + '''65001''' + ');';
+
+                EXEC [sys].[sp_sqlexec] @SqlAgainBulkInsertLF;
+
+                PRINT 'Tried bulk insert using LF line break.';
+                PRINT 'Bulk insert using LF line break was successfull.';
             END TRY 
             
             BEGIN CATCH
-                 PRINT ' + '''Bulk insert using both CRLF and LF line breaks was unsuccessful. Error message:''' + '
-                PRINT ERROR_MESSAGE()
+                PRINT 'Bulk insert using both CRLF and LF line breaks was unsuccessful. Error message:';
+                PRINT ERROR_MESSAGE();
             END CATCH
-        END';
-    EXEC [sys].[sp_sqlexec] @SqlBulkInsert
+        END
 END
 GO
