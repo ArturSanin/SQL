@@ -5,7 +5,7 @@ WITH [cteProcedureParameters] AS (
 	SELECT
 		[ap].[object_id] AS [ObjectID],
 		COUNT(*) AS [ParameterCount],
-		STRING_AGG(CAST([ap].[name] AS nvarchar(max)) + ' ' + '(' + CAST([ap].[parameter_id] AS nvarchar) + ', ' + CASE WHEN [t].[system_type_id] <> [t].[user_type_id] THEN [t].[name] + '(' + [t2].[name] + ')' ELSE [t].[name] END + ', ' + CASE WHEN [ap].[is_output] = 0 THEN 'Input' ELSE 'Input/Output' END + ', ' + CASE WHEN [ap].[has_default_value] = 0 THEN 'No default' ELSE CAST([ap].[default_value] AS nvarchar(128)) END + ', ' + CASE WHEN [ap].[is_nullable] = 1 THEN 'Null' ELSE 'Not null' END + ')', ', ') AS [Parameters]
+		STRING_AGG(CAST([ap].[name] AS nvarchar(max)) + N' ' + N'(' + CAST([ap].[parameter_id] AS nvarchar) + N', ' + CASE WHEN [t].[system_type_id] <> [t].[user_type_id] THEN [t].[name] + N'(' + [t2].[name] + N')' ELSE [t].[name] END + N', ' + CASE WHEN [ap].[is_output] = 0 THEN N'Input' ELSE N'Input/Output' END + N', ' + CASE WHEN [ap].[has_default_value] = 0 THEN N'No default' ELSE CAST([ap].[default_value] AS nvarchar(128)) END + N', ' + CASE WHEN [ap].[is_nullable] = 1 THEN N'Null' ELSE N'Not null' END + N')', N', ') AS [Parameters]
 	FROM 
 		[sys].[all_parameters] [ap]
 	LEFT JOIN	
@@ -31,7 +31,6 @@ WITH [cteProcedureParameters] AS (
 		STRING_AGG(CASE WHEN [sed].[referenced_minor_id] = 0 AND [ao].[type] IN (N'AF', N'FN', N'FS', N'IF', N'TF') THEN CAST([sed].[referenced_schema_name] + N'.' + [sed].[referenced_entity_name] AS nvarchar(max)) ELSE NULL END, N', ') WITHIN GROUP (ORDER BY [sed].[referenced_schema_name] ASC) AS [ReferencedFunctions],
 		SUM(CASE WHEN [sed].[referenced_minor_id] = 0 THEN 1 ELSE 0 END) AS [ReferencedObjectsCount],
 		(SELECT STRING_AGG(CAST([DV].[QualifiedName] AS nvarchar(max)), N', ') WITHIN GROUP (ORDER BY [DV].[QualifiedName] ASC) FROM (SELECT DISTINCT [referenced_schema_name] + '.' + [referenced_entity_name] AS [QualifiedName] FROM [sys].[sql_expression_dependencies] [sed2] WHERE [sed2].[referenced_minor_id] = 0 AND [sed].[referencing_id] = [sed2].[referencing_id]) DV) AS [ReferencedObjects]
-		--STRING_AGG(CASE WHEN [sed].[referenced_minor_id] = 0 THEN CAST([sed].[referenced_schema_name] + N'.' + [sed].[referenced_entity_name] AS nvarchar(max)) ELSE NULL END, N', ') WITHIN GROUP (ORDER BY [sed].[referenced_schema_name] ASC) AS [ReferencedObjects]
 	FROM
 		[sys].[sql_expression_dependencies] [sed] 
 	LEFT JOIN	
@@ -44,7 +43,7 @@ WITH [cteProcedureParameters] AS (
 	SELECT
 		[parent_id] AS [ParentID],
 		COUNT(*) AS [ReferencingTriggersCount],
-		STRING_AGG([name], ', ') AS [ReferencingTriggers]
+		STRING_AGG([name], N', ') AS [ReferencingTriggers]
 	FROM
 		[sys].[triggers]
 	WHERE
@@ -54,10 +53,26 @@ WITH [cteProcedureParameters] AS (
 			FROM
 				[sys].[all_objects]
 			WHERE
-				[type] IN ('P', 'PC', 'X')
+				[type] IN (N'P', N'PC', N'X')
 		)
 	GROUP BY
 		[parent_id]
+),
+
+[cteProcedurePermissions] AS (
+	SELECT
+		[dp].[major_id] AS [MajorID],
+		STRING_AGG(CAST(USER_NAME([dp].[grantor_principal_id]) AS nvarchar(max)) + N' ' + [dp].[state_desc] + N' ' + [dp].[permission_name] + N' to ' + USER_NAME([dp].[grantee_principal_id]), N', ') AS [ProcedurePermissions]
+	FROM
+		[sys].[database_permissions] [dp]
+	LEFT JOIN
+		[sys].[all_objects] [ao] ON [dp].[major_id] = [ao].[object_id]
+	WHERE
+		[dp].[minor_id] = 0
+	AND
+		[ao].[type] IN (N'P', N'PC', N'X')
+	GROUP BY
+		[dp].[major_id]
 )
 
 SELECT
@@ -67,28 +82,29 @@ SELECT
 	[s].[name] + N'.' + [ao].[name] AS [ProcedureQualifiedName],
 	CAST(
 		CASE
-			WHEN [ao].[type_desc] LIKE 'SQL%' THEN SUBSTRING([ao].[type_desc], 1, 3) + LOWER(REPLACE(SUBSTRING([ao].[type_desc], 4, LEN([ao].[type_desc])), '_', ' ')) 
-			ELSE SUBSTRING([ao].[type_desc], 1, 1) + LOWER(REPLACE(SUBSTRING([ao].[type_desc], 2, LEN([ao].[type_desc])), '_', ' ')) 
+			WHEN [ao].[type_desc] LIKE N'SQL%' THEN SUBSTRING([ao].[type_desc], 1, 3) + LOWER(REPLACE(SUBSTRING([ao].[type_desc], 4, LEN([ao].[type_desc])), N'_', N' ')) 
+			ELSE SUBSTRING([ao].[type_desc], 1, 1) + LOWER(REPLACE(SUBSTRING([ao].[type_desc], 2, LEN([ao].[type_desc])), N'_', N' ')) 
 		END AS nvarchar(60)
 	) AS [ProcedureTyp],
 	CASE
-		WHEN [ao].[is_ms_shipped] = 0 THEN 'User-defined procedure'
-		WHEN [ao].[is_ms_shipped] = 1 THEN 'System-defined procedure'
+		WHEN [ao].[is_ms_shipped] = 0 THEN N'User-defined procedure'
+		WHEN [ao].[is_ms_shipped] = 1 THEN N'System-defined procedure'
 	END AS [ProcedureOrigin],
 	USER_NAME(COALESCE([ao].[principal_id], [s].[principal_id])) AS [ProcedureOwner],
 	[ao].[create_date] AS [ProcedureCreationDate],
 	[ao].[modify_date] AS [ProcedureLastModifiedDate],
-	COALESCE(CAST([ep].[value] AS nvarchar(MAX)), 'No description available') AS [ProcedureDescription],
+	COALESCE(CAST([ep].[value] AS nvarchar(MAX)), N'No description available') AS [ProcedureDescription],
 	CASE
-		WHEN [ao].[type] = 'P' THEN 'T-SQL'
-		WHEN [ao].[type] = 'PC' THEN 'CLR'
-		WHEN [ao].[type] = 'X' THEN 'Extended'
+		WHEN [ao].[type] = N'P' THEN N'T-SQL'
+		WHEN [ao].[type] = N'PC' THEN N'CLR'
+		WHEN [ao].[type] = N'X' THEN N'Extended'
 	END AS [ProcedureImplementation],
 	COALESCE([ctePP].[ParameterCount], 0) AS [ParameterCount],
-	COALESCE([ctePP].[Parameters], 'no parameters') AS [Parameters],
-	COALESCE([asm].[definition], 'No definition available') AS [ProcedureDefinition],
+	COALESCE([ctePP].[Parameters], N'No parameters') AS [Parameters],
+	COALESCE([asm].[definition], N'No definition available') AS [ProcedureDefinition],
+	LEN([asm].[definition]) - LEN(REPLACE([asm].[definition], CHAR(10), '')) + 1 AS [ProcedureDefinitionLineCount],
 	COALESCE(LEN([asm].[definition]), 0) AS [DefinitionSize],
-	HASHBYTES('SHA2_256', REPLACE(REPLACE(REPLACE([asm].[definition], CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS [DefinitionHash],
+	HASHBYTES(N'SHA2_256', REPLACE(REPLACE(REPLACE([asm].[definition], CHAR(13), N''), CHAR(10), N''), CHAR(9), N'')) AS [DefinitionHash],
 	COALESCE(DATALENGTH([asm].[definition]), 0) AS [ProcedureSizeBytes],
 	[asm].[uses_ansi_nulls] AS [UsesAnsiNulls],
 	[asm].[uses_quoted_identifier] AS [UsesQuotedIdentifier],
@@ -99,7 +115,7 @@ SELECT
 	[asm].[uses_native_compilation] AS [UsesNativeCompilation],
 	[ao].[is_published] AS [IsPublished],
 	[ao].[is_schema_published] AS [IsSchemaPublished],
-	OBJECTPROPERTY([ao].[object_id], 'IsEncrypted') AS [IsEncrypted],
+	OBJECTPROPERTY([ao].[object_id], N'IsEncrypted') AS [IsEncrypted],
 	COALESCE([cteD].[ReferencedSchemasCount], 0) AS [ReferencedSchemasCount],
 	[cteD].[ReferencedSchemas],
 	CASE
@@ -128,26 +144,36 @@ SELECT
 	[cteD].[ReferencedFunctions],
 	COALESCE([cteD].[ReferencedObjectsCount], 0) AS [ReferencedObjectsCount],
 	[cteD].[ReferencedObjects],
+	[cteT].[ReferencingTriggersCount],
+	[cteT].[ReferencingTriggers],
+	[cteProcP].[ProcedurePermissions],
 	[deps].[execution_count] AS [ExecutionCount],
 	[deps].[last_execution_time] AS [LastExecutionTime],
+	[deps].[total_worker_time] AS [TotalCPUTime],
+	1.0 * [deps].[total_worker_time] / [execution_count] AS [AverageCPUTime],
 	[deps].[total_elapsed_time] AS [TotalElapsedTime],
-	-- [deps].[avg_elapsedTime] AS [AvgElapsedTime],
+	1.0 * [deps].[total_elapsed_time] / [deps].[execution_count] AS [AverageElapsedTime],
 	[deps].[min_elapsed_time] AS [MinElapsedTime],
 	[deps].[max_elapsed_time] AS [MaxElapsedTime],
 	[deps].[total_logical_reads] AS [TotalLogicalReads],
-	[deps].[total_logical_writes] AS [TotalLogicalWrites]  -- Total writes?
+	1.0 * [deps].[total_logical_reads] / [deps].[execution_count] AS [AverageLogicalReads],
+	[deps].[total_logical_writes] AS [TotalLogicalWrites]
 FROM
 	[sys].[all_objects] [ao]
 LEFT JOIN
 	[sys].[schemas] [s] ON [ao].[schema_id] = [s].[schema_id]
 LEFT JOIN
-	[sys].[extended_properties] [ep] ON [ao].[object_id] = [ep].[major_id] AND [ep].[name] = 'MS_Description'
+	[sys].[extended_properties] [ep] ON [ao].[object_id] = [ep].[major_id] AND [ep].[name] = N'MS_Description'
 LEFT JOIN
 	[cteProcedureParameters] [ctePP] ON [ao].[object_id] = [ctePP].[ObjectID] 
 LEFT JOIN
 	[sys].[all_sql_modules] [asm] ON [ao].[object_id] = [asm].[object_id]
 LEFT JOIN
 	[cteDependencies] [cteD] ON [ao].[object_id] = [cteD].[ReferencingID] 
+LEFT JOIN
+	[cteTriggers] [cteT] ON [ao].[object_id] = [cteT].[ParentID]
+LEFT JOIN
+	[cteProcedurePermissions] [cteProcP] ON [ao].[object_id] = [cteProcP].[MajorID]
 LEFT JOIN
 	[sys].[dm_exec_procedure_stats] [deps] ON [ao].[object_id] = [deps].[object_id] 
 WHERE
