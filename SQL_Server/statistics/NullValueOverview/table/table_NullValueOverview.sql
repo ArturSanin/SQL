@@ -9,13 +9,13 @@ CREATE TABLE [Stats].[NullValueOverview](
 	[TableType] nvarchar(60),
 	[TableSchema] sysname,
 	[TableName] sysname,
-	[CellCount] bigint,
-	[NullCount] int,
-	[NullRatio] float,
-	[NullPercentage] float,
-	[NotNullCount] int,
-	[NotNullRatio] float,
-	[NotNullPercentage] float
+	[CellCount] bigint NULL,
+	[NullCount] int NULL,
+	[NullRatio] decimal(18,6) NULL,
+	[NullPercentage] decimal(5, 2) NULL,
+	[NotNullCount] int NULL,
+	[NotNullRatio] decimal(18,6) NULL,
+	[NotNullPercentage] decimal(5, 2) NULL
 );
 
 DECLARE 
@@ -24,11 +24,11 @@ DECLARE
 	@TableName sysname,
 	@CellCount bigint,
 	@NullCount int,
-	@NullRatio float,
-	@NullPercentage float,
+	@NullRatio decimal(18,6),
+	@NullPercentage decimal(5,2),
 	@NotNullCount int,
-	@NotNullRatio float,
-	@NotNullPercentage float;
+	@NotNullRatio decimal(18,6),
+	@NotNullPercentage decimal(5,2);
 
 DECLARE @TblTables TABLE (
 	[TableType] nvarchar(60),
@@ -40,14 +40,20 @@ DECLARE @TblTables TABLE (
 INSERT INTO @TblTables
 SELECT
 	CASE
-		WHEN [IST].[TABLE_TYPE] = 'BASE TABLE' THEN 'User Table'
-		WHEN [IST].[TABLE_TYPE] = 'VIEW' THEN 'View'
+		WHEN [o].[type] = N'U' THEN N'User Table'
+		WHEN [o].[type] = N'V' THEN N'View'
 	END AS [TableType],
-	[IST].[TABLE_SCHEMA] AS [Schema],
-	[IST].[TABLE_NAME] AS [Name],
-	ROW_NUMBER() OVER (ORDER BY [IST].[TABLE_SCHEMA] ASC, [IST].[TABLE_NAME] ASC) AS [TableNumber]
+	[s].[name] AS [TableSchema],
+	[o].[name] AS [TableName],
+	ROW_NUMBER() OVER (ORDER BY [s].[name] ASC, [o].[name] ASC) AS [TableNumber]
 FROM
-	[INFORMATION_SCHEMA].[TABLES] [IST];
+	[sys].[objects] [o]
+INNER JOIN
+	[sys].[schemas] [s] ON [o].[schema_id] = [s].[schema_id] 
+WHERE
+	[o].[is_ms_shipped] = 0
+AND
+	[o].[type] IN ('U', 'V');
 
 DECLARE
 	@TableCounter int = 1,
@@ -62,42 +68,28 @@ SET @TableEndCounter = (
 
 WHILE @TableCounter <= @TableEndCounter
 BEGIN
-	SET @TableType = (
-		SELECT 
-			[TableType] 
-		FROM 
-			@TblTables 
-		WHERE 
-			[TableNumber] = @TableCounter
-	);
+	SELECT
+		@TableType = [TableType],
+		@TableSchema = [TableSchema],
+		@TableName = [TableName] 
+	FROM
+		@TblTables 
+	WHERE 
+		[TableNumber] = @TableCounter;
 
-	SET @TableSchema = (
-		SELECT 
-			[TableSchema] 
-		FROM 
-			@TblTables 
-		WHERE 
-			[TableNumber] = @TableCounter
-	);
-
-	SET @TableName = (
-		SELECT 
-			[TableName] 
-		FROM 
-			@TblTables 
-		WHERE 
-			[TableNumber] = @TableCounter
-	);
-
-	DECLARE 
+	DECLARE
+		@QuotedQualifiedName nvarchar(251) = QUOTENAME(@TableSchema) + N'.' + QUOTENAME(@TableName),
+		@ObjectID int,
 		@TableRowCount int,
-		@QueryTableRowCount nvarchar(MAX) = '',
+		@QueryTableRowCount nvarchar(MAX) = N'',
 		@TableColumnCount int,
-		@QueryTableColumnCount nvarchar(MAX) = '';
+		@QueryTableColumnCount nvarchar(MAX) = N'';
+
+	SET @ObjectID = OBJECT_ID(@QuotedQualifiedName);
 
 	SET @QueryTableRowCount = N'
 		SELECT @TableRowCount = COUNT(*) 
-		FROM ' + QUOTENAME(@TableSchema) + N'.' + QUOTENAME(@TableName) + N';';
+		FROM ' + @QuotedQualifiedName + N';';
 
 	EXEC [sys].[sp_executesql]
 		@QueryTableRowCount, 
@@ -106,8 +98,8 @@ BEGIN
 
 	SET @QueryTableColumnCount = N'
 		SELECT @TableColumnCount = COUNT(*) 
-		FROM [INFORMATION_SCHEMA].[COLUMNS] 
-		WHERE [TABLE_SCHEMA] = ''' + @TableSchema + N''' AND [TABLE_NAME] = ''' + @TableName + N''';';
+		FROM [sys].[columns] 
+		WHERE [object_id] = ' + CAST(@ObjectID AS nvarchar(128)) + N';';
 
 	EXEC [sys].[sp_executesql]
 		@QueryTableColumnCount, 
@@ -137,54 +129,31 @@ BEGIN
 	ELSE
 		BEGIN
 			DECLARE 
-				@Counter int = 1,
-				@CounterEnd int = @TableColumnCount,
-				@ColumnName sysname,
-				@TotalNullCount int = 0,
-				@TotalNotNullCount int = 0,
-				@ColumnNullCount int,
-				@QueryColumnCounts nvarchar(MAX) = '',
-				@ColumnNotNullCount int
+				@NullSum nvarchar(max) = N'',
+				@NotNullSum nvarchar(max) = N'',
+				@Query nvarchar(max) = N'';
 
-			WHILE @Counter <= @CounterEnd
-			BEGIN				
-				SET @ColumnName = (
-					SELECT 
-						[COLUMN_NAME] 
-					FROM 
-						[INFORMATION_SCHEMA].[COLUMNS] 
-					WHERE 
-						[TABLE_SCHEMA] = @TableSchema 
-					AND
-						[TABLE_NAME] = @TableName 
-					AND 
-						[ORDINAL_POSITION] = @Counter
-				);
+			SELECT
+				@NullSum = STRING_AGG(CAST(N'SUM(CASE WHEN ' + QUOTENAME([c].[name]) + N' IS NULL THEN 1 ELSE 0 END)' AS nvarchar(max)), N' + '),
+				@NotNullSum = STRING_AGG(CAST(N'SUM(CASE WHEN ' + QUOTENAME([c].[name]) + N' IS NOT NULL THEN 1 ELSE 0 END)' AS nvarchar(max)), N' + ')
+			FROM
+				[sys].[columns] [c]
+			WHERE
+				[object_id] = @ObjectID;
 
-				SET @QueryColumnCounts = N'
-					SELECT 
-						@ColumnNullCount = SUM(CASE WHEN ' + QUOTENAME(@ColumnName) + ' IS NULL THEN 1 ELSE 0 END),
-						@ColumnNotNullCount = SUM(CASE WHEN ' + QUOTENAME(@ColumnName) + ' IS NOT NULL THEN 1 ELSE 0 END)
-					FROM ' + QUOTENAME(@TableSchema) + N'.' + QUOTENAME(@TableName) + N';';
-		
-				EXEC [sys].[sp_executesql]
-				@QueryColumnCounts, 
-				N'@ColumnNullCount int OUTPUT, @ColumnNotNullCount int OUTPUT', 
-				@ColumnNullCount = @ColumnNullCount OUTPUT,
-				@ColumnNotNullCount = @ColumnNotNullCount OUTPUT;
+			SET @Query = N'SELECT @NullCount = ' + @NullSum + N', @NotNullCount = ' + @NotNullSum + 
+			N' FROM ' + @QuotedQualifiedName + N';';
 
-				SET @TotalNullCount = @TotalNullCount + @ColumnNullCount;
-				SET @TotalNotNullCount = @TotalNotNullCount + @ColumnNotNullCount;
-				
-				SET @Counter = @Counter + 1;
-			END;
-			SET @NullCount = @TotalNullCount;
-			SET @NotNullCount = @TotalNotNullCount;
+			EXEC [sys].[sp_executesql]
+			@Query, 
+			N'@NullCount int OUTPUT, @NotNullCount int OUTPUT', 
+			@NullCount = @NullCount OUTPUT,
+			@NotNullCount = @NotNullCount OUTPUT;
 
-			SET @NullRatio = 1.0 * @TotalNullCount / @CellCount;
-			SET @NullPercentage = 100 * 1.0 * @TotalNullCount / @CellCount;
-			SET @NotNullRatio = 1.0 * @TotalNotNullCount / @CellCount;
-			SET @NotNullPercentage = 100 * 1.0 * @TotalNotNullCount / @CellCount;
+			SET @NullRatio = 1.0 * @NullCount / @CellCount;
+			SET @NullPercentage = 100 * 1.0 * @NullCount / @CellCount;
+			SET @NotNullRatio = 1.0 * @NotNullCount / @CellCount;
+			SET @NotNullPercentage = 100 * 1.0 * @NotNullCount / @CellCount;
 		END;
 
 	INSERT INTO [Stats].[NullValueOverview] VALUES (
