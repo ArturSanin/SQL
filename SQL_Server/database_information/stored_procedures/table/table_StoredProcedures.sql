@@ -216,3 +216,508 @@ LEFT JOIN
 WHERE
 	[ao].[type] IN (N'P', N'PC', N'X');
 GO
+
+
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'A comprehensive metadata overview of all stored procedures (T-SQL, CLR, and extended) in the database, including definitions, parameters, dependencies, usage of dynamic SQL, temporary tables, table variables, external resources, permissions, execution statistics, and other attributes such as schema binding, encryption, and ownership.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The object ID of the stored procedure in the database.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureID';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The schema to which the stored procedure belongs.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureSchema';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The name of the stored procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureName';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The fully qualified name of the procedure in the format SchemaName.ProcedureName.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureQualifiedName';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The type of procedure (e.g., SQL Stored Procedure, CLR Stored Procedure, Extended Stored Procedure).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureTyp';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'Specifies whether the procedure is user-defined or system-defined.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureOrigin';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The database principal that owns the stored procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureOwner';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The date and time when the stored procedure was created in the database.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureCreationDate';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The date and time when the stored procedure definition was last modified.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureLastModifiedDate';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The description of the stored procedure, if provided in extended properties.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureDescription';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'Indicates the implementation technology of the procedure (e.g., T-SQL, CLR, Extended).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureImplementation';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The total number of parameters defined for the stored procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ParameterCount';
+GO
+
+EXEC [sys].[sp_addextendedproperty]
+    @Name = N'MS_Description',
+    @value = N'The parameters in the stored procedure in the format @ParameterName(Parameter ID, Datatype, Input/Output, Default/No default, Null/Not null).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'Parameters';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Contains the full SQL definition text of the stored procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureDefinition';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'A SHA-256 hash generated from the normalized procedure definition. Formatting whitespace is removed before hashing to produce a stable value.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'DefinitionHash';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Total number of characters used in the stored procedure definition.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureDefinitionCharLength';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Approximate size of the stored procedure definition in bytes.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureDefinitionSizeBytes';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Heuristic flag indicating whether the procedure appears to use dynamic SQL. Accuracy is not guaranteed.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'UsesDynamicSQL';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Heuristic flag indicating whether the procedure references table variables. Accuracy is not guaranteed.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'UsesTableVariables';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Heuristic flag indicating whether the procedure references temporary tables. Accuracy is not guaranteed.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'UsesTemporaryTables';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure appears to access external resources such as linked servers or OPENQUERY. May include false positives.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'UsesExternalResources';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Specifies whether SET ANSI_NULLS was ON when the procedure was created.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'UsesAnsiNulls';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether SET QUOTED_IDENTIFIER was ON when the procedure was created.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'UsesQuotedIdentifier';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Specifies whether the procedure was created with WITH SCHEMABINDING.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'IsSchemaBound';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure explicitly uses the database collation for string operations.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'UsesDatabaseCollation';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure was created with WITH RECOMPILE.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'IsRecompiled';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure is natively compiled (Hekaton / In-Memory OLTP).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'UsesNativeCompilation';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure is published for replication.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'IsPublished';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Specifies whether the schema associated with the procedure is published for replication.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'IsSchemaPublished';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure definition is encrypted. 1 = Encrypted, 0 = Not Encrypted, NULL = Encryption not supported.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'IsEncrypted';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The total number of distinct database schemas referenced by the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedSchemasCount';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'A comma-separated list of all distinct database schemas referenced by the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedSchemas';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure references at least one table (1 = Yes, 0 = No).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureReferencingTables';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Total number of distinct tables referenced by the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedTablesCount';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'A comma-separated list of all tables referenced by the procedure, typically in schema-qualified form.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedTables';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure references at least one view (1 = Yes, 0 = No).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureReferencingViews';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Total number of distinct views referenced by the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedViewsCount';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'A comma-separated list of all views referenced by the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedViews';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure calls or references other stored procedures (1 = Yes, 0 = No).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureReferencingProcedures';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Total number of stored procedures called or referenced by this procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedProceduresCount';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'A comma-separated list of all procedures referenced by this procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedProcedures';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure calls or references any SQL functions (1 = Yes, 0 = No).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureReferencingFunctions';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Total number of distinct functions referenced by the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedFunctionsCount';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'A comma-separated list of all functions referenced by the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedFunctions';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Total number of all referenced objects (tables, views, procedures, functions) used by the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedObjectsCount';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'A unified comma-separated list of all referenced objects across all object types.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencedObjects';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Indicates whether the procedure is referenced or executed by one or more triggers.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedureReferencedByTriggers';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The number of triggers that reference or execute the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencingTriggersCount';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Comma-separated list of the names of triggers that reference or execute the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ReferencingTriggers';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'List of explicit permissions assigned to the procedure (e.g., GRANT EXECUTE), aggregated across all principals.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ProcedurePermissions';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Identifies the principal under which the procedure executes (EXECUTE AS clause). Defines the security context during execution.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ExecuteAsPrincipal';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The total number of times the stored procedure has been executed since the last restart or plan cache flush.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'ExecutionCount';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Timestamp of the most recent execution of the procedure. Updated whenever the cached plan is used.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'LastExecutionTime';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Total cumulative CPU time (in microseconds) consumed by all executions of the procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'TotalCPUTime';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The average CPU time per execution, computed as TotalCPUTime / ExecutionCount.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'AverageCPUTime';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'Total cumulative elapsed time (in microseconds) for all executions of the stored procedure.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'TotalElapsedTime';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The average elapsed time (in microseconds) per execution. Computed as TotalElapsedTime / ExecutionCount.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'AverageElapsedTime';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The shortest measured execution time of the stored procedure (in microseconds).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'MinElapsedTime';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The longest measured execution time of the stored procedure (in microseconds).',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'MaxElapsedTime';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The total number of logical reads (8-KB pages) performed by the procedure across all executions.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'TotalLogicalReads';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The average number of logical reads per execution, calculated as TotalLogicalReads / ExecutionCount.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'AverageLogicalReads';
+GO
+
+EXEC [sys].[sp_addextendedproperty] 
+    @Name = N'MS_Description',
+    @value = N'The cumulative number of logical write operations performed by the procedure across all executions.',
+    @level0type = N'SCHEMA', @level0name = N'DbInfo',
+    @level1type = N'TABLE',  @level1name = N'StoredProcedures',
+    @level2type = N'COLUMN', @level2name = N'TotalLogicalWrites';
+GO
