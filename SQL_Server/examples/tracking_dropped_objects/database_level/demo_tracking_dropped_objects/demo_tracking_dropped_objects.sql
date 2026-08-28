@@ -419,5 +419,5 @@ SELECT
 	[ObjectLastModifyDate],
 	[DroppedOn]
 FROM 
-	[DummyDB].[DbInfo].[DroppedObjects];
+	[DbInfo].[DroppedObjects];
 GO
