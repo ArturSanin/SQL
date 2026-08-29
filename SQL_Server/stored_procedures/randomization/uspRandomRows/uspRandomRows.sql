@@ -6,8 +6,8 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 -- =============================================
--- Author:		<Author,,Name>
--- Create date: <Create Date,,>
+-- Author:		Artur Sanin
+-- Create date: 2026-08-29
 -- Description:	Returns a specified number of random rows
 --				from the specified table or view.
 -- =============================================
