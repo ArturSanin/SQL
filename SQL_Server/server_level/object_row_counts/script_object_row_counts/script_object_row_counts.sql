@@ -185,7 +185,7 @@ IF @ObjectsCount <= 1000 BEGIN
 			N'SYSDATETIME()' +
 			N')',
 			N',' + CHAR(13) + CHAR(10)
-		)
+		) + N';'
 	FROM
 		[#Objects];
 	

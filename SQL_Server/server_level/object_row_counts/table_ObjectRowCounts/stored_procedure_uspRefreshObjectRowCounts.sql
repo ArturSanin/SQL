@@ -86,7 +86,7 @@ BEGIN
 				N'SYSDATETIME()' +
 				N')',
 				N',' + CHAR(13) + CHAR(10)
-			)
+			) + N';'
 		FROM
 			[#Objects];
 	
