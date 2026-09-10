@@ -38,8 +38,6 @@ BEGIN
 				CHAR(9) + CHAR(9) + N'[ao].[name] COLLATE DATABASE_DEFAULT AS [ObjectName]' + CHAR(13) + CHAR(10) +
 				CHAR(9) + N'FROM' + CHAR(13) + CHAR(10) +
 				CHAR(9) + CHAR(9) + QUOTENAME([d].[name]) + N'.[sys].[all_objects] [ao]' + CHAR(13) + CHAR(10) +
-	--			CHAR(9) + N'INNER JOIN' + CHAR(13) + CHAR(10) +
-	--			CHAR(9) + CHAR(9) + QUOTENAME([d].[name]) + N'.[sys].[schemas] [s] ON [ao].[schema_id] = [s].[schema_id]' + CHAR(13) + CHAR(10) +
 				CHAR(9) + N'WHERE' + CHAR(13) + CHAR(10) +
 				CHAR(9) + CHAR(9) + N'[ao].[is_ms_shipped] = 0',
 				CHAR(13) + CHAR(10) +
@@ -80,16 +78,23 @@ BEGIN
 			WHEN @CountType = N'ByType' 
 				THEN CHAR(13) + CHAR(10) + 
 				N'GROUP BY' + CHAR(13) + CHAR(10) +
-				CHAR(9) + N'[ObjectType];'
+				CHAR(9) + N'[ObjectType]' + CHAR(13) + CHAR(10) +
+				N'ORDER BY' + CHAR(13) + CHAR(10) +
+				CHAR(9) + N'[ObjectType] ASC;'
 			WHEN @CountType = N'ByDatabase' 
 				THEN CHAR(13) + CHAR(10) + 
 				N'GROUP BY' + CHAR(13) + CHAR(10) +
-				CHAR(9) + N'[DatabaseName];'
+				CHAR(9) + N'[DatabaseName]' + CHAR(13) + CHAR(10) +
+				N'ORDER BY' + CHAR(13) + CHAR(10) +
+				CHAR(9) + N'[DatabaseName] ASC;'
 			WHEN @CountType = N'ByDatabaseAndType' 
 				THEN CHAR(13) + CHAR(10) + 
 				N'GROUP BY' + CHAR(13) + CHAR(10) +
 				CHAR(9) + N'[DatabaseName],' + CHAR(13) + CHAR(10) +
-				CHAR(9) + N'[ObjectType];'
+				CHAR(9) + N'[ObjectType]' + CHAR(13) + CHAR(10) +
+				N'ORDER BY' + CHAR(13) + CHAR(10) +
+				CHAR(9) + N'[DatabaseName] ASC,' + CHAR(13) + CHAR(10) +
+				CHAR(9) + N'[ObjectType] ASC;'
 		END; 
 		
 		EXEC [sys].[sp_executesql] 
