@@ -6,8 +6,8 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 -- =============================================
--- Author:		<Author,,Name>
--- Create date: <Create Date,,>
+-- Author:		Artur Sanin
+-- Create date: 2026-09-09
 -- Description:	Selects all columns across all 
 --				user-created databases (database ID > 4) 
 --				from a specified system view in 
@@ -68,7 +68,7 @@ BEGIN
 			@SqlCommand =
 			STRING_AGG(
 				CAST(N'SELECT' AS nvarchar(max)) + CHAR(13) + CHAR(10) +
-				CHAR(9) + N'N''' + [d].[name] + N''' COLLATE DATABASE_DEFAULT AS [database_name],' + CHAR(13) + CHAR(10) +
+				CHAR(9) + N'N''' + REPLACE([d].[name], N'''', N'''''') + N''' COLLATE DATABASE_DEFAULT AS [database_name],' + CHAR(13) + CHAR(10) +
 				@Columns + CHAR(13) + CHAR(10) +
 				N'FROM' + CHAR(13) + CHAR(10) +
 				CHAR(9) + QUOTENAME([d].[name]) + N'.' + QUOTENAME(@SchemaName) + N'.' + QUOTENAME(@ViewName) 
