@@ -52,7 +52,7 @@ WITH [cteObjectDefinitions] AS (
 		[o].[is_ms_shipped] = 0
 ),
 
-[cte] AS (
+[cteObjectDefinitionMetadata] AS (
 	SELECT
 		[cteOD].[ObjectId],
 		[cteOD].[ObjectSchema],
@@ -75,182 +75,242 @@ WITH [cteObjectDefinitions] AS (
 )
 	
 SELECT
-	[cte].[ObjectId],
-	[cte].[ObjectSchema],
-	[cte].[ObjectName],
-	[cte].[ObjectType],
-	[cte].[ObjectDefinition],
-	[cte].[ObjectDefinitionCharacterCount],
-	[cte].[ObjectDefinitionDataLength],
-	[cte].[ObjectDefinitionLineCount],
-	[cte].[ObjectDefinitionHash],
-	[cte].[ObjectDefinitionStandardized],
-	[cte].[ObjectDefinitionStandardizedCharacterCount],
-	[cte].[ObjectDefinitionStandardizedDataLength],
-	[cte].[ObjectDefinitionStandardizedHash],
-	[cte].[RemovedCharactersInDefinitionStandardized],
+	[cteODM].[ObjectId],
+	[cteODM].[ObjectSchema],
+	[cteODM].[ObjectName],
+	[cteODM].[ObjectType],
+	[cteODM].[ObjectDefinition],
+	[cteODM].[ObjectDefinitionCharacterCount],
+	[cteODM].[ObjectDefinitionDataLength],
+	[cteODM].[ObjectDefinitionLineCount],
+	[cteODM].[ObjectDefinitionHash],
+	[cteODM].[ObjectDefinitionStandardized],
+	[cteODM].[ObjectDefinitionStandardizedCharacterCount],
+	[cteODM].[ObjectDefinitionStandardizedDataLength],
+	[cteODM].[ObjectDefinitionStandardizedHash],
+	[cteODM].[RemovedCharactersInDefinitionStandardized],
 	/* Heuristics for SQL object definition analysis */
-	CASE
-		WHEN CHARINDEX(N'--', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 OR (CHARINDEX(N'/*', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'/*', [cte].[ObjectDefinitionLowerCaseStandardized]) < CHARINDEX(N'*/', [cte].[ObjectDefinitionLowerCaseStandardized]))
+	CASE 
+		WHEN PATINDEX(N'%--%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 OR PATINDEX(N'%/*%*/%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseComments],
 	CASE
-		WHEN CHARINDEX(N'declare@', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%declare@%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseParameterDeclaration],
 	CASE
-		WHEN CHARINDEX(N'exec', REPLACE([cte].[ObjectDefinitionLowerCaseStandardized], N'executeas', N'')) > 0
+		WHEN PATINDEX(N'%exec%', REPLACE([cteODM].[ObjectDefinitionLowerCaseStandardized], N'executeas', N'')) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseProcedureExecution],
 	CASE
-		WHEN CHARINDEX(N'select', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%select%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseSelect],
 	CASE
-		WHEN CHARINDEX(N'select', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'*', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'select', [cte].[ObjectDefinitionLowerCaseStandardized]) + 6, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0
+		WHEN PATINDEX(N'%select%*%from%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseSelectAll],
 	CASE
-		WHEN (CHARINDEX(N'select', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0) AND CHARINDEX(N'from', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'select', [cte].[ObjectDefinitionLowerCaseStandardized]) + 6, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0
+		WHEN PATINDEX(N'%select%from%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseSelectFrom],
 	CASE
-		WHEN CHARINDEX(N'where', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%where%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseWhere],
 	CASE
-		WHEN CHARINDEX(N'crossapply', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%crossapply%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseCrossApply],
 	CASE
-		WHEN CHARINDEX(N'outerapply', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%outerapply%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseOuterApply],
 	CASE
-		WHEN (CHARINDEX(N'leftjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'on', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'leftjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) + 8, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0) OR (CHARINDEX(N'leftouterjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'on', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'leftouterjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) + 13, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0)
+		WHEN PATINDEX(N'%from%leftjoin%on%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 OR PATINDEX(N'%from%leftouterjoin%on%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseLeftJoin],
 	CASE
-		WHEN (CHARINDEX(N'rightjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'on', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'rightjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) + 9, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0) OR (CHARINDEX(N'rightouterjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'on', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'rightouterjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) + 14, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0)
+		WHEN PATINDEX(N'%from%rightjoin%on%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 OR PATINDEX(N'%from%rightouterjoin%on%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseRightJoin],
 	CASE
-		WHEN (CHARINDEX(N'fulljoin', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'on', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'fulljoin', [cte].[ObjectDefinitionLowerCaseStandardized]) + 8, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0) OR (CHARINDEX(N'fullouterjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'on', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'fullouterjoin', [cte].[ObjectDefinitionLowerCaseStandardized]) + 13, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0)
+		WHEN PATINDEX(N'%from%fulljoin%on%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 OR PATINDEX(N'%from%fullouterjoin%on%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseFullJoin],
 	CASE
-		WHEN CHARINDEX(N'join', REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE([cte].[ObjectDefinitionLowerCaseStandardized], N'leftjoin', N''), N'leftouterjoin',N''), N'rightjoin',N''), N'rightouterjoin', N''), N'fulljoin', N''), N'fullouterjoin', N'')) > 0 AND CHARINDEX(N'on', SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE([cte].[ObjectDefinitionLowerCaseStandardized], N'leftjoin', N''), N'leftouterjoin',N''), N'rightjoin',N''), N'rightouterjoin', N''), N'fulljoin', N''), N'fullouterjoin', N''), CHARINDEX(N'join', REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE([cte].[ObjectDefinitionLowerCaseStandardized], N'leftjoin', N''), N'leftouterjoin',N''), N'rightjoin',N''), N'rightouterjoin', N''), N'fulljoin', N''), N'fullouterjoin', N'')) + 4, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0
+		WHEN PATINDEX(N'%from%crossjoin%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseCrossJoin],
+	CASE
+		WHEN PATINDEX(N'%from%join%on%', REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE([cteODM].[ObjectDefinitionLowerCaseStandardized], N'leftjoin', N''), N'leftouterjoin',N''), N'rightjoin',N''), N'rightouterjoin', N''), N'fulljoin', N''), N'fullouterjoin', N''), N'crossjoin', N'')) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseInnerJoin],
 	CASE
-		WHEN CHARINDEX(N'groupby', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%groupby%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseGroupBy],
 		CASE
-		WHEN CHARINDEX(N'having', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%having%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseHaving],
 	CASE
-		WHEN CHARINDEX(N'unionall', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%unionall%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseUnionAll],
 	CASE
-		WHEN CHARINDEX(N'union', REPLACE([cte].[ObjectDefinitionLowerCaseStandardized], N'unionall', N'')) > 0
+		WHEN PATINDEX(N'%union%', REPLACE([cteODM].[ObjectDefinitionLowerCaseStandardized], N'unionall', N'')) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseUnion],
 	CASE
-		WHEN CHARINDEX(N'update', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'set', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'update', [cte].[ObjectDefinitionLowerCaseStandardized]) + 6, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0
+		WHEN PATINDEX(N'%update%set%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseUpdateTable],
 	CASE
-		WHEN CHARINDEX(N'drop', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%drop%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseDropObject],
 	CASE
-		WHEN CHARINDEX(N'delete', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%delete%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseDeleteFromTable],
 	CASE
-		WHEN CHARINDEX(N'insertinto', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'values(', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'insertinto', [cte].[ObjectDefinitionLowerCaseStandardized]) + 10, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0
+		WHEN PATINDEX(N'%truncatetable%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseTruncateTable],
+	CASE
+		WHEN PATINDEX(N'%insertinto%values(%)%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseInsertIntoValues],
 	CASE
-		WHEN CHARINDEX(N'insertinto', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'select', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'insertinto', [cte].[ObjectDefinitionLowerCaseStandardized]) + 10, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0
+		WHEN PATINDEX(N'%insertinto%select%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseInsertIntoSelect],
 	CASE
-		WHEN CHARINDEX(N'with', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'as(', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'with', [cte].[ObjectDefinitionLowerCaseStandardized]) + 4, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0
+		WHEN PATINDEX(N'%with%as(%)%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseCTE],
 	CASE
-		WHEN CHARINDEX(N'select', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'as', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'select', [cte].[ObjectDefinitionLowerCaseStandardized]) + 6, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) < CHARINDEX(N'from', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'select', [cte].[ObjectDefinitionLowerCaseStandardized]) + 6, [cte].[ObjectDefinitionLowerCaseStandardizedLength]))
+		WHEN PATINDEX(N'%select%as%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseColumnAlias],
 	CASE
-		WHEN CHARINDEX(N'orderby', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0
+		WHEN PATINDEX(N'%orderby%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseOrderBy],
 	CASE
-		WHEN CHARINDEX(N'case', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'when', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'case', [cte].[ObjectDefinitionLowerCaseStandardized]) + 4, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0 AND CHARINDEX(N'then', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'when', [cte].[ObjectDefinitionLowerCaseStandardized]) + 4, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0 AND CHARINDEX(N'end', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'then', [cte].[ObjectDefinitionLowerCaseStandardized]) + 4, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0
+		WHEN PATINDEX(N'%case%when%then%end%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
 	END AS [MayUseCase],
 	CASE
-		WHEN CHARINDEX(N'begintry', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'endtry', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'begintry', [cte].[ObjectDefinitionLowerCaseStandardized]) + 8, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0 AND CHARINDEX(N'begincatch', [cte].[ObjectDefinitionLowerCaseStandardized]) > 0 AND CHARINDEX(N'endcatch', SUBSTRING([cte].[ObjectDefinitionLowerCaseStandardized], CHARINDEX(N'begincatch', [cte].[ObjectDefinitionLowerCaseStandardized]) + 10, [cte].[ObjectDefinitionLowerCaseStandardizedLength])) > 0
+		WHEN PATINDEX(N'%begintry%endtry%begincatch%endcatch%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
-	END AS [MayUseBeginCatch]
+	END AS [MayUseTryCatch],
+	CASE
+		WHEN PATINDEX(N'%while%begin%end%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseWhileLoop],
+	CASE
+		WHEN PATINDEX(N'%exec%sp_executesql%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 OR PATINDEX(N'%exec%sp_sqlexec%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 OR PATINDEX(N'%exec(''%'')%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 OR PATINDEX(N'%execute(''%'')%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0  -- Check exec('...') and execute('...') separately to minimize false positives.
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseDynamicSql],
+	CASE
+		WHEN PATINDEX(N'%createtable#%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 OR PATINDEX(N'%select%into%#%from%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseTemporaryTables],
+	CASE
+		WHEN PATINDEX(N'%begintran%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseTransaction],
+		CASE
+		WHEN PATINDEX(N'%begintran%save%tran%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseSaveTransaction],
+	CASE
+		WHEN PATINDEX(N'%begintran%commit%tran%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseCommitTransaction],
+	CASE
+		WHEN PATINDEX(N'%begintran%rollback%tran%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseRollbackTransaction],
+	CASE
+		WHEN PATINDEX(N'%''%''%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0 OR PATINDEX(N'%n''%''%', [cteODM].[ObjectDefinitionLowerCaseStandardized]) > 0
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [MayUseStrings]
 FROM
-	[cte] [cte];
+	[cteObjectDefinitionMetadata] [cteODM];
