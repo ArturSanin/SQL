@@ -13,7 +13,7 @@
 	system_type_id.
 */
 
-USE [AdventureWorks2022];
+USE [DatabaseName];
 GO
 
 WITH [cteColumnDataTypeInformation] AS (
