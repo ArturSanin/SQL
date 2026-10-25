@@ -1,7 +1,6 @@
 /*
 	============================== Description ==============================
-	This query provides detailed column metadata for user-defined tables and 
-	views.
+	This query provides detailed column metadata.
 
 	Note: The SystemTypeId returned by this query may differ from the system_type_id 
 	defined in sys.types. The Microsoft-provided types hierarchyid, geometry, 
@@ -91,8 +90,6 @@ WITH [cteColumnDataTypeInformation] AS (
 		[i].[object_id] AS [ObjectId],
 		[i].[name] AS [PrimaryKeyConstraintName],
 		[ic].[column_id] AS [ColumnId],
-		--[ic].[index_id],
-		--[ic].[index_column_id],
 		[ic].[key_ordinal] AS [KeyOrdinal]
 	FROM
 		[sys].[index_columns] [ic]
@@ -157,6 +154,77 @@ WITH [cteColumnDataTypeInformation] AS (
 		[ctePrimaryKeyColumnsCount] [ctePKCC] ON [ctePKC].[ObjectId] = [ctePKCC].[ObjectId]
 	LEFT JOIN
 		[cteOtherPrimaryKeyColumns] [cteOPKC] ON [ctePKC].[ObjectId] = [cteOPKC].[ObjectId] AND [ctePKC].[ColumnId] = [cteOPKC].[ColumnId]
+),
+/* CTE's for unique constraint information */
+[cteUniqueConstraintColumns] AS (
+	SELECT
+		[i].[object_id] AS [ObjectId],
+		[i].[name] AS [UniqueConstraintName],
+		[ic].[column_id] AS [ColumnId],
+		[ic].[key_ordinal] AS [KeyOrdinal]
+	FROM
+		[sys].[index_columns] [ic]
+	LEFT JOIN
+		[sys].[indexes] [i] ON [ic].[object_id] = [i].[object_id] AND [ic].[index_id] = [i].[index_id]
+	WHERE
+		[i].[is_unique_constraint] = 1
+),
+
+[cteUniqueConstraintColumnsCount] AS (
+	SELECT
+		[ObjectId],
+		COUNT(*) AS [UniqueConstraintColumnCount]
+	FROM
+		[cteUniqueConstraintColumns]
+	GROUP BY
+		[ObjectId]
+),
+
+[cteOtherUniqueConstraintColumns] AS (
+	SELECT
+		[cteUCC].[ObjectId],
+		[cteUCC].[ColumnId],
+		(
+		SELECT
+			N'[' + 
+				STRING_AGG(
+					CAST(
+						N'{' +
+							N'"UniqueConstraintOrdinalPosition":' + CAST([subUCC].[KeyOrdinal] AS nvarchar(128)) + N',' +
+							N'"ColumnName":"' + STRING_ESCAPE([c].[name], N'json') + N'",' +
+							N'"ColumnOrdinalPosition":' + CAST(COLUMNPROPERTY([subUCC].[ObjectId], [c].[name], N'ordinal') AS nvarchar(128)) +
+						N'}' AS nvarchar(max)
+					)
+				,N','
+				) WITHIN GROUP (ORDER BY [subUCC].[KeyOrdinal]) +
+			N']'
+		FROM
+			[cteUniqueConstraintColumns] [subUCC]
+		LEFT JOIN
+			[sys].[columns] [c] ON [subUCC].[ObjectId] = [c].[object_id] AND [subUCC].[ColumnId] = [c].[column_id]
+		WHERE
+			[subUCC].[ObjectId] = [cteUCC].[ObjectId]
+		AND
+			[subUCC].[ColumnId] <> [cteUCC].[ColumnId]
+	) AS [OtherUniqueConstraintColumns]
+	FROM
+		[cteUniqueConstraintColumns] [cteUCC]
+),
+
+[cteUniqueConstraintInformation] AS (
+	SELECT
+		[cteUCC].[ObjectId],
+		[cteUCC].[UniqueConstraintName],
+		[cteUCC].[ColumnId],
+		[cteUCC].[KeyOrdinal] AS [UQColumnOrdinal],
+		[cteUCCC].[UniqueConstraintColumnCount],
+		[cteOUCC].[OtherUniqueConstraintColumns]
+	FROM
+		[cteUniqueConstraintColumns] [cteUCC]
+	LEFT JOIN
+		[cteUniqueConstraintColumnsCount] [cteUCCC] ON [cteUCC].[ObjectId] = [cteUCCC].[ObjectId]
+	LEFT JOIN
+		[cteOtherUniqueConstraintColumns] [cteOUCC] ON [cteUCC].[ObjectId] = [cteOUCC].[ObjectId] AND [cteUCC].[ColumnId] = [cteOUCC].[ColumnId]
 ),
 /* CTE for check constraint information */
 [cteCheckConstraintInformation] AS (
@@ -283,7 +351,7 @@ SELECT
 			THEN CAST(1 AS bit)
 		ELSE
 			CAST(0 AS bit)
-	END AS [IsPrimaryKey],
+	END AS [IsOnlyPrimaryKeyColumn],
 	CASE
 		WHEN [ctePKI].[PrimaryKeyColumnCount] > 1
 			THEN CAST(1 AS bit)
@@ -299,6 +367,28 @@ SELECT
 	[ctePKI].[OtherPrimaryKeyColumns],
 	OBJECT_ID([s].[name] + N'.' + [ctePKI].[PrimaryKeyConstraintName]) AS [PrimaryKeyConstraintId],
 	[ctePKI].[PrimaryKeyConstraintName],
+	/* Unique constraint information */
+	CASE
+		WHEN [cteUCI].[UniqueConstraintColumnCount] = 1
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [IsOnlyUniqueConstraintColumn],
+	CASE
+		WHEN [cteUCI].[UniqueConstraintColumnCount] > 1
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [IsPartOfUniqueConstraint],
+	CASE
+		WHEN [cteUCI].[UniqueConstraintColumnCount] > 1
+			THEN [cteUCI].[UQColumnOrdinal]
+		ELSE
+			NULL
+	END AS [UniqueConstraintColumnOrdinal],
+	[cteUCI].[OtherUniqueConstraintColumns],
+	OBJECT_ID([s].[name] + N'.' + [cteUCI].[UniqueConstraintName]) AS [UniqueConstraintId],
+	[cteUCI].[UniqueConstraintName],
 	/* Default value information */
 	CASE
 		WHEN [dc].[name] IS NOT NULL
@@ -338,6 +428,54 @@ SELECT
 	/* Masked column information */
 	[ac].[is_masked] AS [IsMasked],
 	[mc].[masking_function] AS [MaskingFunction],
+	/* Period information */
+	CASE
+		WHEN [pst].[start_column_id] IS NOT NULL 
+			THEN CAST(1 AS bit)
+		WHEN [pst].[start_column_id] IS NULL 
+			THEN CAST(0 AS bit)
+		ELSE
+			NULL
+	END AS [IsPeriodStartColumn],
+	CASE
+		WHEN [pst].[end_column_id] IS NOT NULL 
+			THEN CAST(1 AS bit)
+		WHEN [pst].[end_column_id] IS NULL 
+			THEN CAST(0 AS bit)
+		ELSE
+			NULL
+	END AS [IsPeriodEndColumn],
+	CASE
+		WHEN [pst].[start_column_id] IS NOT NULL 
+			THEN [pst].[name]
+		WHEN [ped].[end_column_id] IS NOT NULL 
+			THEN [ped].[name]
+		ELSE
+			NULL
+	END AS [PeriodName],
+	CASE
+		WHEN [pst].[start_column_id] IS NOT NULL 
+			THEN [pst].[period_type_desc]
+		WHEN [ped].[end_column_id] IS NOT NULL 
+			THEN [ped].[period_type_desc]
+		ELSE
+			NULL
+	END AS [PeriodType],
+	/* CLR-Table valued function order columns */
+	CASE
+		WHEN [foc].[column_id] IS NOT NULL
+			THEN CAST(1 AS bit)
+		ELSE CAST(0 AS bit)
+	END AS [IsCLRTableValuedFunctionOrderColumn],
+	[foc].[order_column_id] AS [CLRTableValuedFunctionColumnOrderId],
+	CASE
+		WHEN [foc].[is_descending] = 1
+			THEN N'DESC'
+		WHEN [foc].[is_descending] = 0
+			THEN N'ASC'
+		ELSE
+			NULL
+	END AS [CLRTableValuedFunctionColumnSortDirection],
 	/* Other information */
 	[ac].[is_nullable] AS [IsNullable],
 	[ac].[is_ansi_padded] AS [IsAnsiPadded],
@@ -382,7 +520,23 @@ SELECT
 			THEN CAST(1 AS bit)
 		ELSE
 			NULL -- Information not available
-	END AS [IsTableMaxColumnIdUsed]
+	END AS [IsColumnIdEqualToMaxColumnIdUsed],
+	CASE 
+		WHEN [esc].[column_id] IS NOT NULL 
+			THEN CAST(1 AS bit)
+		WHEN [esc].[column_id] IS NULL 
+			THEN CAST(0 AS bit)
+		ELSE
+			NULL
+	END AS [IsExternalStreamColumn],
+	CASE 
+		WHEN [etc].[column_id] IS NOT NULL 
+			THEN CAST(1 AS bit)
+		WHEN [etc].[column_id] IS NULL 
+			THEN CAST(0 AS bit)
+		ELSE
+			NULL
+	END AS [IsExternalTableColumn]
 FROM
 	[sys].[all_columns] [ac]
 LEFT JOIN
@@ -396,6 +550,8 @@ LEFT JOIN
 LEFT JOIN
 	[ctePrimaryKeyInformation] [ctePKI] ON [ac].[object_id] = [ctePKI].[ObjectId] AND [ac].[column_id] = [ctePKI].[ColumnId]
 LEFT JOIN
+	[cteUniqueConstraintInformation] [cteUCI] ON [ac].[object_id] = [cteUCI].[ObjectId] AND [ac].[column_id] = [cteUCI].[ColumnId]
+LEFT JOIN
 	[sys].[default_constraints] [dc] ON [ac].[object_id] = [dc].[parent_object_id] AND [ac].[column_id] = [dc].[parent_column_id]
 LEFT JOIN
 	[cteCheckConstraintInformation] [cteCCI] ON [ac].[object_id] = [cteCCI].[ParentObjectId] AND [ac].[column_id] = [cteCCI].[ParentColumnId]
@@ -406,12 +562,22 @@ LEFT JOIN
 LEFT JOIN
 	[sys].[masked_columns] [mc] ON [ac].[object_id] = [mc].[object_id] AND [ac].[column_id] = [mc].[column_id]
 LEFT JOIN
+	[sys].[periods] [pst] ON [ac].[object_id] = [pst].[object_id] AND [ac].[column_id] = [pst].[start_column_id]
+LEFT JOIN
+	[sys].[periods] [ped] ON [ac].[object_id] = [ped].[object_id] AND [ac].[column_id] = [ped].[end_column_id]
+LEFT JOIN
+	[sys].[function_order_columns] [foc] ON [ac].[object_id] = [foc].[object_id] AND [ac].[column_id] = [foc].[column_id]
+LEFT JOIN
 	[sys].[system_columns] [sc] ON [ac].[object_id] = [sc].[object_id] AND [ac].[column_id] = [sc].[column_id]
 LEFT JOIN
 	[sys].[tables] [t] ON [ac].[object_id] = [t].[object_id] AND [ac].[column_id] = [t].[max_column_id_used]
+LEFT JOIN
+	[sys].[external_stream_columns] [esc] ON [ac].[object_id] = [esc].[object_id] AND [ac].[column_id] = [esc].[column_id]
+LEFT JOIN
+	[sys].[external_table_columns] [etc] ON [ac].[object_id] = [etc].[object_id] AND [ac].[column_id] = [etc].[column_id]
 WHERE
-	[ao].[type] IN (N'U', N'V')
-AND
+--	[ao].[type] IN (N'ET', N'U', N'V')
+--AND
 	[ao].[is_ms_shipped] = 0
 ORDER BY
 	[s].[name] ASC, 
