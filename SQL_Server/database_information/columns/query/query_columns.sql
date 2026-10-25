@@ -13,8 +13,8 @@
 	system_type_id.
 */
 
-USE [DatabaseName];
-GO
+--USE [DatabaseName];
+--GO
 
 WITH [cteColumnDataTypeInformation] AS (
 	SELECT
@@ -112,7 +112,6 @@ WITH [cteColumnDataTypeInformation] AS (
 		[ObjectId]
 ),
 
--- Überprüfen.
 [cteOtherPrimaryKeyColumns] AS (
 	SELECT
 		[ctePKC].[ObjectId],
@@ -121,11 +120,13 @@ WITH [cteColumnDataTypeInformation] AS (
 		SELECT
 			N'[' + 
 				STRING_AGG(
-					N'{' +
-						N'"PrimaryKeyOrdinal":' + CAST([subPKC].[KeyOrdinal] AS nvarchar(128)) + N',' +
-						N'"ColumnName":"' + STRING_ESCAPE([c].[name], N'json') + N'",' +
-						N'"ColumnOrdinalPosition":' + CAST(COLUMNPROPERTY([subPKC].[ObjectId], [c].[name], N'ordinal') AS nvarchar(128)) +
-					N'}'
+					CAST(
+						N'{' +
+							N'"PrimaryKeyOrdinal":' + CAST([subPKC].[KeyOrdinal] AS nvarchar(128)) + N',' +
+							N'"ColumnName":"' + STRING_ESCAPE([c].[name], N'json') + N'",' +
+							N'"ColumnOrdinalPosition":' + CAST(COLUMNPROPERTY([subPKC].[ObjectId], [c].[name], N'ordinal') AS nvarchar(128)) +
+						N'}' AS nvarchar(max)
+					)
 				,N','
 				) WITHIN GROUP (ORDER BY [subPKC].[KeyOrdinal]) +
 			N']'
@@ -156,6 +157,38 @@ WITH [cteColumnDataTypeInformation] AS (
 		[ctePrimaryKeyColumnsCount] [ctePKCC] ON [ctePKC].[ObjectId] = [ctePKCC].[ObjectId]
 	LEFT JOIN
 		[cteOtherPrimaryKeyColumns] [cteOPKC] ON [ctePKC].[ObjectId] = [cteOPKC].[ObjectId] AND [ctePKC].[ColumnId] = [cteOPKC].[ColumnId]
+),
+/* CTE for check constraint information */
+[cteCheckConstraintInformation] AS (
+	SELECT
+		[ckc].[parent_object_id] AS [ParentObjectId],
+		[ckc].[parent_column_id] AS [ParentColumnId],
+		N'[' +
+			STRING_AGG(
+				CAST(
+					N'{' +
+						N'"CheckConstraintName":"' + STRING_ESCAPE([ckc].[name], N'json') + N'",' +
+						N'"CheckConstraintId":' + CAST([ckc].[object_id] AS nvarchar(128)) + N',' +
+						N'"CheckConstraintDefinition":"' + STRING_ESCAPE([ckc].[definition], N'json') + N'",' +
+						N'"CheckConstraintUsesDatabaseCollation":' + CAST([ckc].[uses_database_collation] AS nvarchar(128)) + N',' +
+						N'"CheckConstraintCreatedOn":"' + CAST([ckc].[create_date] AS nvarchar(128)) + N'",' +
+						N'"CheckConstraintLastModifiedOn":"' + CAST([ckc].[modify_date] AS nvarchar(128)) + N'",' +
+						N'"CheckConstraintIsDisabled":' + CAST([ckc].[is_disabled] AS nvarchar(128)) + N',' +
+						N'"CheckConstraintIsNotTrusted":' + CAST([ckc].[is_not_trusted] AS nvarchar(128)) + N',' +
+						N'"CheckConstraintIsSystemNamed":' + CAST([ckc].[is_system_named] AS nvarchar(128)) + N',' +
+						N'"CheckConstraintIsNotForReplication":' + CAST([ckc].[is_not_for_replication] AS nvarchar(128)) +
+					N'}' AS nvarchar(max)
+				),
+				N','
+			) +
+		N']' AS [CheckConstraints]
+	FROM
+		[sys].[check_constraints] [ckc]
+	WHERE
+		[ckc].[parent_column_id] > 0
+	GROUP BY
+		[ckc].[parent_object_id],
+		[ckc].[parent_column_id]
 )
 
 SELECT
@@ -243,6 +276,7 @@ SELECT
 			N'xCheckx'
 	END AS [UserTypeBaseType],
 	[cteCDTI].[DataType],
+	COALESCE([ac].[collation_name], N'Not a text column') AS [ColumnCollationName],
 	/* Primary key information */
 	CASE
 		WHEN [ctePKI].[PrimaryKeyColumnCount] = 1
@@ -264,7 +298,91 @@ SELECT
 	END AS [PrimaryKeyOrdinal],
 	[ctePKI].[OtherPrimaryKeyColumns],
 	OBJECT_ID([s].[name] + N'.' + [ctePKI].[PrimaryKeyConstraintName]) AS [PrimaryKeyConstraintId],
-	[ctePKI].[PrimaryKeyConstraintName]
+	[ctePKI].[PrimaryKeyConstraintName],
+	/* Default value information */
+	CASE
+		WHEN [dc].[name] IS NOT NULL
+			THEN CAST(1 AS bit)
+		WHEN [dc].[name] IS NULL
+			THEN CAST(0 AS bit)
+		ELSE
+			NULL
+	END AS [HasDefaultValue],
+	[dc].[name] AS [DefaultConstraintName],
+	[dc].[object_id] AS [DefaultConstraintId],
+	[dc].[definition] AS [DefaultValue],
+	[dc].[create_date] AS [DefaultConstraintCreatedOn],
+	[dc].[modify_date] AS [DefaultConstraintLastModifiedOn],
+	[dc].[is_system_named] AS [DefaultConstraintIsSystemNamed],
+	/* Check constraint information */
+	CASE
+		WHEN [cteCCI].[ParentColumnId] IS NOT NULL
+			THEN CAST(1 AS bit)
+		WHEN [cteCCI].[ParentColumnId] IS NULL
+			THEN CAST(0 AS bit)
+		ELSE
+			NULL
+	END AS [HasCheckConstraint],
+	[cteCCI].[CheckConstraints],
+	/* Identity column information */
+	[ac].[is_identity] AS [IsIdentity],
+	[ic].[seed_value] AS [IdentityColumnSeedValue],
+	[ic].[increment_value] AS [IdentityColumnIncrementValue],
+	[ic].[last_value] AS [IdentityColumnLastValue],
+	[ic].[is_not_for_replication] AS [IdentityColumnIsNotForReplication],
+	/* Computed column information */
+	[ac].[is_computed] AS [IsComputed],
+	[cc].[definition] AS [ComputedColumnDefinition],
+	[cc].[uses_database_collation] AS [ComputedColumnUsesDatabaseCollation],
+	[cc].[is_persisted] AS [ComputedColumnIsPersisted],
+	/* Masked column information */
+	[ac].[is_masked] AS [IsMasked],
+	[mc].[masking_function] AS [MaskingFunction],
+	/* Other information */
+	[ac].[is_nullable] AS [IsNullable],
+	[ac].[is_ansi_padded] AS [IsAnsiPadded],
+	[ac].[is_rowguidcol] AS [IsRowguidcol],
+	[ac].[is_filestream] AS [IsFilestream],
+	[ac].[is_replicated] AS [IsReplicated],
+	[ac].[is_non_sql_subscribed] AS [IsNonSQLSubscribed],
+	[ac].[is_merge_published] AS [IsMergePublished],
+	[ac].[is_dts_replicated] AS [IsDTSReplicated],
+	[ac].[is_xml_document] AS [IsXMLDocument],
+	[ac].[is_sparse] AS [IsSparse],
+	[ac].[is_column_set] AS [IsColumnSet],
+	[ac].[is_hidden] AS [IsHidden],
+	[ac].[is_data_deletion_filter_column] AS [IsDataDeletionFilterColumn],
+	[ac].[is_dropped_ledger_column] AS [IsDroppedLedgerColumn],
+	CASE
+		WHEN [ao].[type] = N'U'
+			THEN CAST(1 AS bit)
+		WHEN [ao].[type] <> N'U'
+			THEN CAST(0 AS bit)
+		ELSE
+			NULL
+	END AS [IsTableColumn],
+	CASE
+		WHEN [ao].[type] = N'V'
+			THEN CAST(1 AS bit)
+		WHEN [ao].[type] <> N'V'
+			THEN CAST(0 AS bit)
+		ELSE
+			NULL
+	END AS [IsViewColumn],
+	CASE
+		WHEN [sc].[column_id] IS NOT NULL 
+			THEN CAST(1 AS bit)
+		WHEN [sc].[column_id] IS NULL 
+			THEN CAST(0 AS bit)
+		ELSE
+			NULL
+	END AS [IsSystemColumn],
+	CASE  -- Only for user defined tables
+		WHEN [t].[max_column_id_used] IS NOT NULL 
+			THEN CAST(1 AS bit)
+		ELSE
+			NULL -- Information not available
+	END AS [IsTableMaxColumnIdUsed]
 FROM
 	[sys].[all_columns] [ac]
 LEFT JOIN
@@ -277,6 +395,20 @@ LEFT JOIN
 	[sys].[extended_properties] [ep] ON [ac].[object_id] = [ep].[major_id] AND [ac].[column_id] = [ep].[minor_id] AND [ep].[class] = 1 AND [ep].[name] = N'MS_Description'
 LEFT JOIN
 	[ctePrimaryKeyInformation] [ctePKI] ON [ac].[object_id] = [ctePKI].[ObjectId] AND [ac].[column_id] = [ctePKI].[ColumnId]
+LEFT JOIN
+	[sys].[default_constraints] [dc] ON [ac].[object_id] = [dc].[parent_object_id] AND [ac].[column_id] = [dc].[parent_column_id]
+LEFT JOIN
+	[cteCheckConstraintInformation] [cteCCI] ON [ac].[object_id] = [cteCCI].[ParentObjectId] AND [ac].[column_id] = [cteCCI].[ParentColumnId]
+LEFT JOIN
+	[sys].[identity_columns] [ic] ON [ac].[object_id] = [ic].[object_id] AND [ac].[column_id] = [ic].[column_id]
+LEFT JOIN
+	[sys].[computed_columns] [cc] ON [ac].[object_id] = [cc].[object_id] AND [ac].[column_id] = [cc].[column_id]
+LEFT JOIN
+	[sys].[masked_columns] [mc] ON [ac].[object_id] = [mc].[object_id] AND [ac].[column_id] = [mc].[column_id]
+LEFT JOIN
+	[sys].[system_columns] [sc] ON [ac].[object_id] = [sc].[object_id] AND [ac].[column_id] = [sc].[column_id]
+LEFT JOIN
+	[sys].[tables] [t] ON [ac].[object_id] = [t].[object_id] AND [ac].[column_id] = [t].[max_column_id_used]
 WHERE
 	[ao].[type] IN (N'U', N'V')
 AND
