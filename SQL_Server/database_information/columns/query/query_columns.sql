@@ -84,6 +84,78 @@ WITH [cteColumnDataTypeInformation] AS (
 			END AS [DataType]
 	FROM
 		[sys].[all_columns] [c]
+),
+/* CTE's for primary key information */
+[ctePrimaryKeyColumns] AS (
+	SELECT
+		[i].[object_id] AS [ObjectId],
+		[i].[name] AS [PrimaryKeyConstraintName],
+		[ic].[column_id] AS [ColumnId],
+		--[ic].[index_id],
+		--[ic].[index_column_id],
+		[ic].[key_ordinal] AS [KeyOrdinal]
+	FROM
+		[sys].[index_columns] [ic]
+	LEFT JOIN
+		[sys].[indexes] [i] ON [ic].[object_id] = [i].[object_id] AND [ic].[index_id] = [i].[index_id]
+	WHERE
+		[i].[is_primary_key] = 1
+),
+
+[ctePrimaryKeyColumnsCount] AS (
+	SELECT
+		[ObjectId],
+		COUNT(*) AS [PrimaryKeyColumnCount]
+	FROM
+		[ctePrimaryKeyColumns]
+	GROUP BY
+		[ObjectId]
+),
+
+-- Überprüfen.
+[cteOtherPrimaryKeyColumns] AS (
+	SELECT
+		[ctePKC].[ObjectId],
+		[ctePKC].[ColumnId],
+		(
+		SELECT
+			N'[' + 
+				STRING_AGG(
+					N'{' +
+						N'"PrimaryKeyOrdinal":' + CAST([subPKC].[KeyOrdinal] AS nvarchar(128)) + N',' +
+						N'"ColumnName":"' + STRING_ESCAPE([c].[name], N'json') + N'",' +
+						N'"ColumnOrdinalPosition":' + CAST(COLUMNPROPERTY([subPKC].[ObjectId], [c].[name], N'ordinal') AS nvarchar(128)) +
+					N'}'
+				,N','
+				) WITHIN GROUP (ORDER BY [subPKC].[KeyOrdinal]) +
+			N']'
+		FROM
+			[ctePrimaryKeyColumns] [subPKC]
+		LEFT JOIN
+			[sys].[columns] [c] ON [subPKC].[ObjectId] = [c].[object_id] AND [subPKC].[ColumnId] = [c].[column_id]
+		WHERE
+			[subPKC].[ObjectId] = [ctePKC].[ObjectId]
+		AND
+			[subPKC].[ColumnId] <> [ctePKC].[ColumnId]
+	) AS [OtherPrimaryKeyColumns]
+	FROM
+		[ctePrimaryKeyColumns] [ctePKC]
+),
+
+[ctePrimaryKeyInformation] AS (
+	SELECT
+		[ctePKC].[ObjectId],
+		[ctePKC].[PrimaryKeyConstraintName],
+		[ctePKC].[ColumnId],
+		[ctePKC].[KeyOrdinal],
+		[ctePKCC].[PrimaryKeyColumnCount],
+		[cteOPKC].[OtherPrimaryKeyColumns]
+	FROM
+		[ctePrimaryKeyColumns] [ctePKC]
+	LEFT JOIN
+		[ctePrimaryKeyColumnsCount] [ctePKCC] ON [ctePKC].[ObjectId] = [ctePKCC].[ObjectId]
+	LEFT JOIN
+		[cteOtherPrimaryKeyColumns] [cteOPKC] ON [ctePKC].[ObjectId] = [cteOPKC].[ObjectId] AND [ctePKC].[ColumnId] = [cteOPKC].[ColumnId]
 )
 
 SELECT
@@ -170,7 +242,29 @@ SELECT
 		ELSE 
 			N'xCheckx'
 	END AS [UserTypeBaseType],
-	[cteCDTI].[DataType]
+	[cteCDTI].[DataType],
+	/* Primary key information */
+	CASE
+		WHEN [ctePKI].[PrimaryKeyColumnCount] = 1
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [IsPrimaryKey],
+	CASE
+		WHEN [ctePKI].[PrimaryKeyColumnCount] > 1
+			THEN CAST(1 AS bit)
+		ELSE
+			CAST(0 AS bit)
+	END AS [IsPartOfPrimaryKey],
+	CASE
+		WHEN [ctePKI].[PrimaryKeyColumnCount] > 1
+			THEN [ctePKI].[KeyOrdinal]
+		ELSE
+			NULL
+	END AS [PrimaryKeyOrdinal],
+	[ctePKI].[OtherPrimaryKeyColumns],
+	OBJECT_ID([s].[name] + N'.' + [ctePKI].[PrimaryKeyConstraintName]) AS [PrimaryKeyConstraintId],
+	[ctePKI].[PrimaryKeyConstraintName]
 FROM
 	[sys].[all_columns] [ac]
 LEFT JOIN
@@ -181,6 +275,8 @@ LEFT JOIN
 	[sys].[schemas] [s] ON [ao].[schema_id] = [s].[schema_id]
 LEFT JOIN
 	[sys].[extended_properties] [ep] ON [ac].[object_id] = [ep].[major_id] AND [ac].[column_id] = [ep].[minor_id] AND [ep].[class] = 1 AND [ep].[name] = N'MS_Description'
+LEFT JOIN
+	[ctePrimaryKeyInformation] [ctePKI] ON [ac].[object_id] = [ctePKI].[ObjectId] AND [ac].[column_id] = [ctePKI].[ColumnId]
 WHERE
 	[ao].[type] IN (N'U', N'V')
 AND
